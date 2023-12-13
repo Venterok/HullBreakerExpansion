@@ -59,7 +59,6 @@ namespace HullBreakerExpansion
             _loaded = true;
         }
         
-        
         static GameObject networkPrefab;
         
         //Netcode 
@@ -69,7 +68,7 @@ namespace HullBreakerExpansion
             if (networkPrefab != null)
                 return;
             
-            var mainAssetBundle = AssetBundle.LoadFromStream(Assembly.GetExecutingAssembly().GetManifestResourceStream("ExampleMod.ExampleModAssets"));;
+            var mainAssetBundle = AssetBundle.LoadFromStream(Assembly.GetExecutingAssembly().GetManifestResourceStream("hullnetwork"));;
             networkPrefab = (GameObject)mainAssetBundle.LoadAsset("hullnetwork");
             networkPrefab.AddComponent<HullNetwork>();
         
