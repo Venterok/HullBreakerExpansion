@@ -1,0 +1,26 @@
+ManifestFileVersion: 0
+CRC: 891155311
+Hashes:
+  AssetFileHash:
+    serializedVersion: 2
+    Hash: a5d7a37b54902fe053fad7612c602350
+  TypeTreeHash:
+    serializedVersion: 2
+    Hash: 35b41b3727f39c9df03a503ffc71e594
+  IncrementalBuildHash:
+    serializedVersion: 2
+    Hash: a5d7a37b54902fe053fad7612c602350
+HashAppended: 0
+ClassTypes:
+- Class: 1
+  Script: {instanceID: 0}
+- Class: 4
+  Script: {instanceID: 0}
+- Class: 114
+  Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+- Class: 115
+  Script: {instanceID: 0}
+SerializeReferenceClassIdentifiers: []
+Assets:
+- Assets/Assets/HullNetwork.prefab
+Dependencies: []

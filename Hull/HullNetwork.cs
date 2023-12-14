@@ -20,21 +20,21 @@ public class HullNetwork : NetworkBehaviour
 
     public void ShowRadiationLevel(float radiationLevel, float radiationMultiplier)
     {
-        Plugin.Mls.LogInfo("Radiation level: " + radiationLevel + " mSv");
+        Plugin.Mls.LogInfo("Radiation level Local: " + radiationLevel + " mSv");
         ShowRadiationLevelServerRPC(radiationLevel, radiationMultiplier);
     }
 
-    [ServerRpc]
+    [ServerRpc(RequireOwnership = false)]
     private void ShowRadiationLevelServerRPC(float radiationLevel, float radiationMultiplier)
     {
-        Plugin.Mls.LogInfo("Radiation level: " + radiationLevel + " mSv");
+        Plugin.Mls.LogInfo("Radiation level Server RPC: " + radiationLevel + " mSv");
         ShowRadiationLevelClientRPC(radiationLevel, radiationMultiplier);
     }
 
     [ClientRpc]
     private void ShowRadiationLevelClientRPC(float radiationLevel, float radiationMultiplier)
     {
-        Plugin.Mls.LogInfo("Radiation level: " + radiationLevel + " mSv");
+        Plugin.Mls.LogInfo("Radiation level Cleint RPC: " + radiationLevel + " mSv");
         HUDManager.Instance.DisplayTip("<color=white>MOON INQUIRY</color>",  "<color=white>Radiation level: " + radiationLevel + " mSv </color>" + "<color=white>   Radiation Multiplier: " + radiationMultiplier + "% </color>", true);
     }
 }

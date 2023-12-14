@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.IO;
 using System.Numerics;
 using System.Reflection;
 using BepInEx;
@@ -26,7 +27,7 @@ namespace HullBreakerExpansion
 
         public static List<HullEvent> EventDictionary = new()
         {
-            { new RadiationCleanUpEvent() },
+            // { new RadiationCleanUpEvent() },
             { new MaskedImposterEvent() }
         };
 
@@ -36,12 +37,15 @@ namespace HullBreakerExpansion
             Mls.LogInfo("Expansion loaded");
             _harmony.PatchAll(typeof(Plugin));
 
+            NetcodeWeaver();
+
             if (!_loaded) Initialize();
         }
 
         public void Start()
         {
             if (!_loaded) Initialize();
+            
         }
 
         public void OnDestroy()
@@ -62,24 +66,26 @@ namespace HullBreakerExpansion
         static GameObject networkPrefab;
         
         //Netcode 
-        [HarmonyPostfix, HarmonyPatch(typeof(GameNetworkManager), "Start")]
+        [HarmonyPostfix, HarmonyPatch(typeof(GameNetworkManager), nameof(GameNetworkManager.StartHost))]
         public static void Init()
         {
             if (networkPrefab != null)
                 return;
             
-            var mainAssetBundle = AssetBundle.LoadFromStream(Assembly.GetExecutingAssembly().GetManifestResourceStream("hullnetwork"));;
+            var mainAssetBundle = AssetBundle.LoadFromMemory(Resource1.hullnetwork);
             networkPrefab = (GameObject)mainAssetBundle.LoadAsset("hullnetwork");
             networkPrefab.AddComponent<HullNetwork>();
         
             NetworkManager.Singleton.AddNetworkPrefab(networkPrefab);
         }
 
-        [HarmonyPostfix, HarmonyPatch(typeof(StartOfRound), "Awake")]
+        [HarmonyPostfix, HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.StartGame))]
         static void SpawnNetworkHandler()
         {
+            Mls.LogInfo("cringe moment");
             if(NetworkManager.Singleton.IsHost || NetworkManager.Singleton.IsServer)
             {
+                Mls.LogInfo("bruh");
                 var networkHandlerHost = Object.Instantiate(networkPrefab, Vector3.zero, Quaternion.identity);
                 networkHandlerHost.GetComponent<NetworkObject>().Spawn();
             }
@@ -89,6 +95,7 @@ namespace HullBreakerExpansion
         [HarmonyPrefix]
         private static bool ModifiedLoad(ref SelectableLevel newLevel)
         {
+            Mls.LogInfo("lvel loaded");
             if (!RoundManager.Instance.IsHost) return true;
 
             if (newLevel.levelID == 3)
@@ -103,8 +110,10 @@ namespace HullBreakerExpansion
             }
             else
             {
+                Mls.LogInfo("radiation added to " + newLevel);
                 Radiation[newLevel] = Random.Range(10f, 25f);;
             }
+
             HullNetwork.Instance.ShowRadiationLevel(Radiation[newLevel], CalculateMultiplier(Radiation[newLevel]));
             IncreaseValuesBasedOnRadiation(newLevel);
 
@@ -195,6 +204,23 @@ namespace HullBreakerExpansion
             }
 
             HullNetwork.Instance.ShowRadiationLevel(Radiation[RoundManager.Instance.currentLevel], CalculateMultiplier(Radiation[RoundManager.Instance.currentLevel]));
+        }
+
+        private static void NetcodeWeaver()
+        {
+            var types = Assembly.GetExecutingAssembly().GetTypes();
+            foreach (var type in types)
+            {
+                var methods = type.GetMethods(BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+                foreach (var method in methods)
+                {
+                    var attributes = method.GetCustomAttributes(typeof(RuntimeInitializeOnLoadMethodAttribute), false);
+                    if (attributes.Length > 0)
+                    {
+                        method.Invoke(null, null);
+                    }
+                }
+            }
         }
     }
 }
