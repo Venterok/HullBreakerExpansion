@@ -29,16 +29,19 @@
 
     <ItemGroup>
         <Reference Include="Assembly-CSharp">
-            <HintPath>D:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Assembly-CSharp.dll</HintPath> 
+            <HintPath>Z:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Assembly-CSharp.dll</HintPath> 
         </Reference>
         <Reference Include="HullBreakerCompany">
-          <HintPath>..\..\..\..\SteamLibrary\steamapps\common\Lethal Company\BepInEx\plugins\HullBreakerCompany.dll</HintPath>
+          <HintPath>Z:\SteamLibrary\steamapps\common\Lethal Company\BepInEx\plugins\HullBreakerCompany.dll</HintPath>
         </Reference>
         <Reference Include="UnityEngine">
-            <HintPath>D:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\UnityEngine.dll</HintPath> 
+            <HintPath>Z:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\UnityEngine.dll</HintPath> 
         </Reference>
         <Reference Include="Unity.Netcode.Runtime">
-            <HintPath>D:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Unity.Netcode.Runtime.dll</HintPath>
+            <HintPath>Z:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Unity.Netcode.Runtime.dll</HintPath>
+        </Reference>
+        <Reference Include="UnityEngine.TMP">
+            <HintPath>Z:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Unity.TextMeshPro.dll</HintPath>
         </Reference>
     </ItemGroup>
 
@@ -67,6 +70,6 @@
     </ItemGroup>
 
     <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-      <Exec Command="D:&#xD;&#xA;cd &quot;D:\Program Files\NetcodePatcher&quot;&#xD;&#xA;NetcodePatcher.dll $(TargetDir) deps/" />
+      <Exec Command="C:&#xD;&#xA;cd &quot;C:\Users\Venterok\Desktop\NetCodePatcher&quot;&#xD;&#xA;NetcodePatcher.dll $(TargetDir) deps/" />
     </Target>
 </Project>

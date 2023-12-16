@@ -27,8 +27,9 @@ namespace HullBreakerExpansion
 
         public static List<HullEvent> EventDictionary = new()
         {
-            // { new RadiationCleanUpEvent() },
-            { new MaskedImposterEvent() }
+            { new RadiationCleanUpEvent() },
+            { new MaskedImposterEvent() },
+            { new CompanyGiftEvent() }
         };
 
         private void Awake()
@@ -36,18 +37,16 @@ namespace HullBreakerExpansion
             Mls = BepInEx.Logging.Logger.CreateLogSource("HULLBREAKER EXPANSION " + PluginInfo.PLUGIN_VERSION);
             Mls.LogInfo("Expansion loaded");
             _harmony.PatchAll(typeof(Plugin));
-
+            _harmony.PatchAll(typeof(HullTerminal));
             NetcodeWeaver();
-
+            
             if (!_loaded) Initialize();
         }
-
         public void Start()
         {
             if (!_loaded) Initialize();
             
         }
-
         public void OnDestroy()
         {
             if (!_loaded) Initialize();
@@ -55,10 +54,6 @@ namespace HullBreakerExpansion
         public void Initialize()
         {
             EventDictionary.ForEach(CustomEventLoader.AddEvent);
-            var hullNetwork = new GameObject("HullNetwork");
-            Mls.LogInfo("HullNetwork created");
-            hullNetwork.AddComponent<HullNetwork>();
-            hullNetwork.AddComponent<NetworkObject>();
             
             _loaded = true;
         }
@@ -66,7 +61,7 @@ namespace HullBreakerExpansion
         static GameObject networkPrefab;
         
         //Netcode 
-        [HarmonyPostfix, HarmonyPatch(typeof(GameNetworkManager), nameof(GameNetworkManager.StartHost))]
+        [HarmonyPostfix, HarmonyPatch(typeof(GameNetworkManager), "Start")]
         public static void Init()
         {
             if (networkPrefab != null)
@@ -79,23 +74,20 @@ namespace HullBreakerExpansion
             NetworkManager.Singleton.AddNetworkPrefab(networkPrefab);
         }
 
-        [HarmonyPostfix, HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.StartGame))]
+        [HarmonyPostfix, HarmonyPatch(typeof(StartOfRound), "Start")]
         static void SpawnNetworkHandler()
         {
-            Mls.LogInfo("cringe moment");
             if(NetworkManager.Singleton.IsHost || NetworkManager.Singleton.IsServer)
             {
-                Mls.LogInfo("bruh");
                 var networkHandlerHost = Object.Instantiate(networkPrefab, Vector3.zero, Quaternion.identity);
                 networkHandlerHost.GetComponent<NetworkObject>().Spawn();
             }
         }
-        
+        //Level load
         [HarmonyPatch(typeof(RoundManager), nameof(RoundManager.LoadNewLevel))]
         [HarmonyPrefix]
         private static bool ModifiedLoad(ref SelectableLevel newLevel)
         {
-            Mls.LogInfo("lvel loaded");
             if (!RoundManager.Instance.IsHost) return true;
 
             if (newLevel.levelID == 3)
@@ -103,6 +95,8 @@ namespace HullBreakerExpansion
                 Radiation.Clear();
                 return true;
             }
+            
+            HullRadiation.ResetDebuff();
 
             if (Radiation.ContainsKey(newLevel))
             {
@@ -110,51 +104,13 @@ namespace HullBreakerExpansion
             }
             else
             {
-                Mls.LogInfo("radiation added to " + newLevel);
                 Radiation[newLevel] = Random.Range(10f, 25f);;
             }
 
-            HullNetwork.Instance.ShowRadiationLevel(Radiation[newLevel], CalculateMultiplier(Radiation[newLevel]));
-            IncreaseValuesBasedOnRadiation(newLevel);
-
+            HullNetwork.Instance.ShowRadiationLevel(Radiation[newLevel], HullRadiation.CalculateMultiplier(Radiation[newLevel]));
+            HullRadiation.IncreaseValuesBasedOnRadiation(newLevel);
+            HullNetwork.Instance.SyncMessage(HullBreakerCompany.Plugin.CurrentMessage);
             return true;
-        }
-        
-        private static void IncreaseValuesBasedOnRadiation(SelectableLevel newLevel)
-        {
-            if (!Radiation.ContainsKey(newLevel)) return;
-
-            float radiation = Radiation[newLevel];
-            float multiplier = CalculateMultiplier(radiation);
-
-            Mls.LogInfo("Old enemySpawnChanceThroughoutDay: " + newLevel.enemySpawnChanceThroughoutDay);
-            newLevel.enemySpawnChanceThroughoutDay = MultiplyAnimationCurve(newLevel.enemySpawnChanceThroughoutDay, multiplier);
-            Mls.LogInfo("New enemySpawnChanceThroughoutDay: " + newLevel.enemySpawnChanceThroughoutDay);
-
-            Mls.LogInfo("Old outsideEnemySpawnChanceThroughDay: " + newLevel.outsideEnemySpawnChanceThroughDay);
-            newLevel.outsideEnemySpawnChanceThroughDay = MultiplyAnimationCurve(newLevel.outsideEnemySpawnChanceThroughDay, multiplier);
-            Mls.LogInfo("New outsideEnemySpawnChanceThroughDay: " + newLevel.outsideEnemySpawnChanceThroughDay);
-
-            Mls.LogInfo("Old maxEnemyPowerCount: " + newLevel.maxEnemyPowerCount);
-            newLevel.maxEnemyPowerCount = (int)(newLevel.maxEnemyPowerCount * multiplier);
-            Mls.LogInfo("New maxEnemyPowerCount: " + newLevel.maxEnemyPowerCount);
-        }
-
-        private static AnimationCurve MultiplyAnimationCurve(AnimationCurve curve, float multiplier)
-        {
-            for (int i = 0; i < curve.keys.Length; i++)
-            {
-                Keyframe key = curve.keys[i];
-                key.value *= multiplier;
-                curve.MoveKey(i, key);
-            }
-
-            return curve;
-        }
-
-        public static float CalculateMultiplier(float radiation)
-        {
-            return 1 + radiation / 50;
         }
         
         [HarmonyPostfix]
@@ -186,7 +142,7 @@ namespace HullBreakerExpansion
                 Radiation[RoundManager.Instance.currentLevel] = 70f;
             }
 
-            HullNetwork.Instance.ShowRadiationLevel(Radiation[RoundManager.Instance.currentLevel], CalculateMultiplier(Radiation[RoundManager.Instance.currentLevel]));
+            HullNetwork.Instance.ShowRadiationLevel(Radiation[RoundManager.Instance.currentLevel], HullRadiation.CalculateMultiplier(Radiation[RoundManager.Instance.currentLevel]));
         }
 
         [HarmonyPostfix]
@@ -194,16 +150,18 @@ namespace HullBreakerExpansion
         private static void RadiationOnHour()
         {
             if (!RoundManager.Instance.IsHost) return;
+            HullRadiation.SetDebuff(Radiation[RoundManager.Instance.currentLevel]);
+            if (Random.Range(0, 2) == 0) return;
             if (Radiation.ContainsKey(RoundManager.Instance.currentLevel))
             {
-                Radiation[RoundManager.Instance.currentLevel] += 0.5f;
+                Radiation[RoundManager.Instance.currentLevel] += 2f;
             }
             else
             {
-                Radiation[RoundManager.Instance.currentLevel] = 0.5f;
+                Radiation[RoundManager.Instance.currentLevel] = 2f;
             }
-
-            HullNetwork.Instance.ShowRadiationLevel(Radiation[RoundManager.Instance.currentLevel], CalculateMultiplier(Radiation[RoundManager.Instance.currentLevel]));
+            
+            HullNetwork.Instance.ShowRadiationLevel(Radiation[RoundManager.Instance.currentLevel], HullRadiation.CalculateMultiplier(Radiation[RoundManager.Instance.currentLevel]));
         }
 
         private static void NetcodeWeaver()
